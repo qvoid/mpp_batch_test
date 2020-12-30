@@ -19,7 +19,7 @@ Replace device by yours.
 Device name can be found by "adb devices"
 """
 device_name = '1SLX42HHQB'
-test_dir = './'             # directory that store jpeg files
+test_dirs = ['./', '../test']             # directory that store jpeg files
 board_dir = '/data/tmp'     # directory on board that store temporay test file and result
 result_dir = 'result'       # directory under test_idr that store test result 
 test_lib = './lib'          # directory that store test libraries
@@ -27,6 +27,7 @@ test_bin = './bin'          # directory that store test binary
 CLK_FREQ = 297000000
 DEBUG_MODE = False
 IRQ_OK = '0x0000434c'
+CURR_DIR = os.getcwd()
 
 class JpegInfo:
     def __init__(self, file_name, width, height, color_fmt):
@@ -102,9 +103,6 @@ else:
     adb.run_and_return_output(['shell', 'echo', '0x100', '>', '/sys/module/rk_vcodec/parameters/mpp_dev_debug'])
     adb.set_property("jpegd_debug", '0')
 
-if not os.path.exists(test_dir + result_dir):
-    os.makedirs(test_dir + result_dir)
-
 #device_arch = adb.get_device_arch()
 #adb.check_run(['shell', 'ls'])
 #shell_cmd = 'cd /data/tmp && ls'
@@ -119,7 +117,6 @@ def decode_file(file_name):
     jpg_file.parse()
     jpg_info = JpegInfo(file_name, jpg_file.getWidth(), jpg_file.getHeight(), jpg_file.getColorFormat().name)
     jpg_info.md5 = hashlib.md5(open(file_name, 'rb').read()).hexdigest()
-    jpg_info.path = test_dir
     hor_stride = str(jpg_info.width)
     ver_stride = str(jpg_info.height)
 
@@ -135,7 +132,7 @@ def decode_file(file_name):
 
     adb.run_and_return_output(['shell', 'cd', board_dir, '&&', 'logcat', '-d', '|', 'tee', '2>&1', 'dec.log'], log_output=False)
     adb.run(['pull', '/data/tmp/dec.log', log_name])
-    cmd('mv ' + log_name + ' ' + test_dir + result_dir + '/')
+    cmd('mv ' + log_name + ' ' + result_dir + '/')
     adb.run(['shell', 'cd', board_dir, '&&', 'rm', 'dec.log'])
 
     if DEBUG_MODE:
@@ -144,7 +141,7 @@ def decode_file(file_name):
             jpg_info.result = False
         else:
             adb.run(['shell', 'cd', board_dir, '&&', 'rm', 'output00.yuv'])
-            cmd('mv ' + yuv_name + ' ' + test_dir + result_dir + '/')
+            cmd('mv ' + yuv_name + ' ' + result_dir + '/')
 
     if not ret:
         jpg_info.result = False
@@ -194,11 +191,15 @@ def decode_file(file_name):
     
 
 def decode_dir(dir_path):
+    os.chdir(dir_path)
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
     for file_name in listdir(dir_path):
         ext = os.path.splitext(file_name)[1]
         if ext != '.jpg' and ext != '.jpeg':
             continue
         decode_file(file_name)
+    os.chdir(CURR_DIR)
 
 """
 Summary decode result: speed, average fps,
@@ -207,7 +208,11 @@ def sum_result():
     return
 
 def main():
-    decode_dir(test_dir)
+    for tmp_dir in test_dirs:
+        print("******************************************")
+        print("Start decode directory: ", tmp_dir)
+        print("******************************************")
+        decode_dir(tmp_dir)
 
 if __name__ == '__main__':
     main()
