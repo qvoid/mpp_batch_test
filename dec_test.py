@@ -19,9 +19,10 @@ Replace device by yours.
 Device name can be found by "adb devices"
 """
 device_name = '1SLX42HHQB'
-test_dirs = ['./', '../test']             # directory that store jpeg files
+test_dirs = ['./', './']             # directory that store jpeg files
 board_dir = '/data/tmp'     # directory on board that store temporay test file and result
 result_dir = 'result'       # directory under test_idr that store test result 
+result_log = result_dir + '/' + 'result.log'
 test_lib = './lib'          # directory that store test libraries
 test_bin = './bin'          # directory that store test binary
 CLK_FREQ = 297000000
@@ -194,11 +195,35 @@ def decode_dir(dir_path):
     os.chdir(dir_path)
     if not os.path.exists(result_dir):
         os.makedirs(result_dir)
+
+    if os.path.exists(result_log):
+        os.remove(result_log)
+
+    """
+    write format:
+        0-irq, 1-result, 2-resolution, 3-format,
+        4-hw_cycles, 5-hw_fps, 6-hw_pixels_per_sec, 7-proc_time,
+        8-proc_fps, 9-md5, 10-file_name
+    """
+    str_format = "{0:<12}{1:<12}{2:<12}{3:<12}{4:<12}{5:<12}{6:<20}{7:<14}{8:<12}{9:<34}{10:<120}\n"
+
+    fileobj = open(result_log, 'w', encoding='utf-8')
+    fileobj.writelines(str_format.format('irq', 'result', 'resolution', \
+                        'fmt', 'hw_cycle', 'hw_fps', 'pixel_rate', \
+                        'proc_time_us', 'proc_fps', 'md5', 'file_path'))
+
     for file_name in listdir(dir_path):
         ext = os.path.splitext(file_name)[1]
         if ext != '.jpg' and ext != '.jpeg':
             continue
-        decode_file(file_name)
+        jpg_info = decode_file(file_name)
+        jpg_info.path = dir_path
+        fileobj.writelines(str_format.format(jpg_info.irq, jpg_info.result, \
+                str(jpg_info.width) + 'x' + str(jpg_info.height), jpg_info.fmt, jpg_info.hw_cycle, \
+                jpg_info.hw_fps, jpg_info.hw_pixel_per_sec, jpg_info.proc_time, jpg_info.proc_fps, \
+                jpg_info.md5, jpg_info.path + jpg_info.file_name))
+
+    fileobj.close()
     os.chdir(CURR_DIR)
 
 """
