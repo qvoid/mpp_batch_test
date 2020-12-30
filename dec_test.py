@@ -19,10 +19,15 @@ Replace device by yours.
 Device name can be found by "adb devices"
 """
 device_name = '1SLX42HHQB'
-test_dirs = ['./', './']             # directory that store jpeg files
+# directory that store jpeg files
+test_dirs = [\
+        './', \
+        './'
+        ]
 board_dir = '/data/tmp'     # directory on board that store temporay test file and result
 result_dir = 'result'       # directory under test_idr that store test result 
 result_log = result_dir + '/' + 'result.log'
+error_dir = 'error_jpg'
 test_lib = './lib'          # directory that store test libraries
 test_bin = './bin'          # directory that store test binary
 CLK_FREQ = 297000000
@@ -115,7 +120,8 @@ def decode_file(file_name):
     name = os.path.splitext(file_name)[0]
 
     jpg_file = JPEGFile(file_name)
-    jpg_file.parse()
+    if not jpg_file.parse():
+        return None
     jpg_info = JpegInfo(file_name, jpg_file.getWidth(), jpg_file.getHeight(), jpg_file.getColorFormat().name)
     jpg_info.md5 = hashlib.md5(open(file_name, 'rb').read()).hexdigest()
     hor_stride = str(jpg_info.width)
@@ -179,11 +185,18 @@ def decode_file(file_name):
         pixels = pixels * 2
     elif jpg_file.getColorFormat() == FORMAT.YUV444:
         pixels = pixels * 3
-        
-    jpg_info.hw_pixel_per_sec = format(pixels / jpg_info.hw_cycle * CLK_FREQ, '.2f')
-    jpg_info.hw_fps = format(CLK_FREQ / jpg_info.hw_cycle, '.2f')
 
-    jpg_info.proc_fps = format(1000000 / jpg_info.proc_time, '.2f')
+    if jpg_info.hw_cycle != 0:    
+        jpg_info.hw_pixel_per_sec = format(pixels / jpg_info.hw_cycle * CLK_FREQ, '.2f')
+        jpg_info.hw_fps = format(CLK_FREQ / jpg_info.hw_cycle, '.2f')
+    else:
+        jpg_info.hw_pixel_per_sec = 0
+        jpg_info.hw_fps = 0
+
+    if jpg_info.proc_time != 0:
+        jpg_info.proc_fps = format(1000000 / jpg_info.proc_time, '.2f')
+    else:
+        jpg_info.proc_fps = 0
 
     print(jpg_info.irq, jpg_info.result, jpg_info.hw_cycle, jpg_info.hw_fps, jpg_info.hw_pixel_per_sec, \
             jpg_info.proc_time, jpg_info.proc_fps)
@@ -195,6 +208,9 @@ def decode_dir(dir_path):
     os.chdir(dir_path)
     if not os.path.exists(result_dir):
         os.makedirs(result_dir)
+
+    if not os.path.exists(error_dir):
+        os.makedirs(error_dir)
 
     if os.path.exists(result_log):
         os.remove(result_log)
@@ -217,6 +233,9 @@ def decode_dir(dir_path):
         if ext != '.jpg' and ext != '.jpeg':
             continue
         jpg_info = decode_file(file_name)
+        if not jpg_info:
+            cmd('cp ' + file_name + ' ' + error_dir + '/')
+            continue
         jpg_info.path = dir_path
         fileobj.writelines(str_format.format(jpg_info.irq, jpg_info.result, \
                 str(jpg_info.width) + 'x' + str(jpg_info.height), jpg_info.fmt, jpg_info.hw_cycle, \

@@ -133,6 +133,7 @@ class JPEGFile(object):
 
         start = 0
         end = 0
+        is_sof0_found = False
 
         #"""
         #The JFIF is entirely compoatible with the standard JPEG interchange format;
@@ -144,7 +145,7 @@ class JPEGFile(object):
         #    return -1
         if contents[0 : 2] != b'\xff\xd8':
             print(self.filename, "is not JFIF")
-            return -1
+            return False
 
         start = 2
 
@@ -156,6 +157,7 @@ class JPEGFile(object):
                 print("found marker: ", MARKERS[tmp], tmp, "length: ", length)
 
             if tmp == b'\xff\xc0':
+                is_sof0_found = True
                 self.precision = contents[start + 4]
                 self.height = (contents[start + 5] << 8) + contents[start + 6]
                 self.width = (contents[start + 7] << 8) + contents[start + 8]
@@ -176,6 +178,9 @@ class JPEGFile(object):
                     break
                 continue
 
+        if not is_sof0_found:
+            return False
+
         if self.sample_factor == 0x111122:
             self.color_format = FORMAT.YUV420
         elif self.sample_factor == 0x111121:
@@ -190,7 +195,7 @@ class JPEGFile(object):
             self.color_format = FORMAT.YUV400
         else:
             print("unknown color format")
-            return -1
+            return False
 
         print("width: ", self.width, "height: ", self.height, "format: ", self.color_format, self.precision, self.n_components)
-
+        return True
