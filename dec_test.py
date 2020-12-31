@@ -10,6 +10,7 @@ import os.path
 from os.path import isfile, join
 import time
 import re
+from typing import Type
 from utils import *
 from enum import Enum
 from jpeg import *
@@ -104,7 +105,7 @@ if not adb.mkdir("/data/", "tmp"):
 if DEBUG_MODE:
     # 0x100 for debug kernel time
     adb.run_and_return_output(['shell', 'echo', '0x100', '>', '/sys/module/rk_vcodec/parameters/mpp_dev_debug'])
-    adb.set_property("jpegd_debug", '0xff')
+    adb.set_property("jpegd_debug", '0x1ff')
 else:
     adb.run_and_return_output(['shell', 'echo', '0x100', '>', '/sys/module/rk_vcodec/parameters/mpp_dev_debug'])
     adb.set_property("jpegd_debug", '0')
@@ -232,10 +233,18 @@ def decode_dir(dir_path):
         ext = os.path.splitext(file_name)[1]
         if ext != '.jpg' and ext != '.jpeg':
             continue
-        jpg_info = decode_file(file_name)
-        if not jpg_info:
+
+        jpg_info = None
+        try:
+            jpg_info = decode_file(file_name)
+        except(RuntimeError, TypeError, NameError):
+            print("python script error, skip this jpg file: ", file_name)
+            continue
+
+        if not jpg_info or (not jpg_info.result):
             cmd('cp ' + file_name + ' ' + error_dir + '/')
             continue
+
         jpg_info.path = dir_path
         fileobj.writelines(str_format.format(jpg_info.irq, jpg_info.result, \
                 str(jpg_info.width) + 'x' + str(jpg_info.height), jpg_info.fmt, jpg_info.hw_cycle, \
