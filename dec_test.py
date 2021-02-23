@@ -165,6 +165,8 @@ def decode_file(file_name):
     match_cost_time = re.search('mpi_dec_test cost time: (\d+)', stdoutdata)
     if match_cost_time:
         jpg_info.proc_time = int(match_cost_time.group(1))
+    else:
+        jpg_info.proc_time = 0
 
     if DEBUG_MODE:
         ret = False
@@ -246,10 +248,15 @@ def decode_dir(dir_path):
             continue
 
         jpg_info.path = dir_path
-        fileobj.writelines(str_format.format(jpg_info.irq, jpg_info.result, \
+
+        dec_result = 'Succeeded'
+        if not jpg_info.result:
+            dec_result = 'Failed'
+
+        fileobj.writelines(str_format.format(jpg_info.irq, dec_result, \
                 str(jpg_info.width) + 'x' + str(jpg_info.height), jpg_info.fmt, jpg_info.hw_cycle, \
                 jpg_info.hw_fps, jpg_info.hw_pixel_per_sec, jpg_info.proc_time, jpg_info.proc_fps, \
-                jpg_info.md5, jpg_info.path + jpg_info.file_name))
+                jpg_info.md5, jpg_info.path + '/' + jpg_info.file_name))
 
     fileobj.close()
     os.chdir(CURR_DIR)
