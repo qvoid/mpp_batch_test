@@ -1,0 +1,20 @@
+diff --git a/mpp/hal/vpu/jpegd/hal_jpegd_rkv.c b/mpp/hal/vpu/jpegd/hal_jpegd_rkv.c
+index b56159e9..744bc2d9 100644
+--- a/mpp/hal/vpu/jpegd/hal_jpegd_rkv.c
++++ b/mpp/hal/vpu/jpegd/hal_jpegd_rkv.c
+@@ -712,6 +712,7 @@ MPP_RET hal_jpegd_rkv_wait(void *hal, HalTaskInfo *task)
+     }
+ 
+     jpegd_dbg_hal("decode one frame in cycles: %d\n", reg_out->reg39_perf_working_cnt);
++    printf("decode one frame in cycles: %d\n", reg_out->reg39_perf_working_cnt);
+ 
+     if (!reg_out->reg1_int.dec_irq || !reg_out->reg1_int.dec_rdy_sta
+         || reg_out->reg1_int.dec_bus_sta || reg_out->reg1_int.dec_error_sta
+@@ -720,6 +721,7 @@ MPP_RET hal_jpegd_rkv_wait(void *hal, HalTaskInfo *task)
+         mpp_err("decode result: failed, irq 0x%08x\n", ((RK_U32 *)reg_out)[1]);
+         errinfo = 1;
+     }
++    printf("decode result: irq 0x%08x\n", ((RK_U32 *)reg_out)[1]);
+ 
+     mpp_buf_slot_get_prop(ctx->frame_slots, task->dec.output, SLOT_FRAME_PTR, &tmp);
+     mpp_frame_set_errinfo(tmp, errinfo);
